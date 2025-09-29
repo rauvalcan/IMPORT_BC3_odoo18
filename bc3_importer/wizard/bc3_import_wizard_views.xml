@@ -23,15 +23,17 @@
                 </group>
                 <footer>
                     <button
-                        string="Import"
-                        name="do_action"
+                        name="action_import_file"
+                        string="Import File"
                         type="object"
-                        class="oe_highlight"
+                        class="btn-primary"
+                        data-hotkey="q"
                     />
                     <button
                         string="Cancel"
-                        class="btn btn-secondary"
+                        class="btn-secondary"
                         special="cancel"
+                        data-hotkey="z"
                     />
                 </footer>
             </form>

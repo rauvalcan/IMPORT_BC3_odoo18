@@ -1,9 +1,9 @@
 {
     "name": "BC3 files importer",
-    "author": "Binhex, Odoo Community Association (OCA)",
-    "website": "https://github.com/OCA/vertical-construction",
+    "author": "revce",
+    "website": "--",
     "category": "BC3",
-    "version": "16.0.1.0.0",
+    "version": "18.0.1.0.0",
     "license": "AGPL-3",
     "depends": ["project", "sale_management"],
     "data": [
