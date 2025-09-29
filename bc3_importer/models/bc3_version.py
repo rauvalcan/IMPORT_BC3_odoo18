@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import logging
 import re
 
@@ -94,20 +96,22 @@ class Bc3VersionRegisterRule(models.Model):
     field_id = fields.Many2one(
         "ir.model.fields",
         "Field",
-        domain=[
-            ("model_id", "=", model_id),
+        # --- CAMBIO REALIZADO AQUÍ ---
+        # El dominio se ha convertido en una cadena de texto para mayor compatibilidad.
+        domain="""[
+            ('model_id', '=', model_id),
             (
-                "ttype",
-                "not in",
+                'ttype',
+                'not in',
                 [
-                    "many2one_reference",
-                    "reference",
-                    "serialized",
-                    "job_serialized",
-                    "selection",
+                    'many2one_reference',
+                    'reference',
+                    'serialized',
+                    'job_serialized',
+                    'selection',
                 ],
             ),
-        ],
+        ]""",
         ondelete="cascade",
     )
     register_id = fields.Many2one(
@@ -119,19 +123,19 @@ class Bc3VersionRegisterRule(models.Model):
     field_ids = fields.Many2many(
         "ir.model.fields",
         string="Field",
-        domain=[
+        domain="""[
             (
-                "ttype",
-                "not in",
+                'ttype',
+                'not in',
                 [
-                    "many2one_reference",
-                    "reference",
-                    "serialized",
-                    "job_serialized",
-                    "selection",
+                    'many2one_reference',
+                    'reference',
+                    'serialized',
+                    'job_serialized',
+                    'selection',
                 ],
             ),
-        ],
+        ]""",
         ondelete="cascade",
     )
 

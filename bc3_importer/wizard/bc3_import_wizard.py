@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import base64
 import io
 import os
@@ -10,11 +12,8 @@ import chardet
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-BC3_PRODUCTS = {}
-created_product = False
-parse_later = []
-lines = {}
-erase_lines = []
+# CORRECCIÓN: Se han eliminado las variables globales de esta sección.
+# Ya no deben existir aquí: BC3_PRODUCTS, created_product, parse_later, lines, erase_lines
 
 
 class BC3ImportWizard(models.TransientModel):
@@ -54,6 +53,15 @@ class BC3ImportWizard(models.TransientModel):
 
     def do_action(self):
         self.ensure_one()
+
+        # CORRECCIÓN: Inicialización de variables como atributos de instancia.
+        # Esto es CRÍTICO para evitar problemas con múltiples usuarios.
+        self.BC3_PRODUCTS = {}
+        self.created_product = False
+        self.parse_later = []
+        self.lines = {}
+        self.erase_lines = []
+
         self.get_uom_products()
         self.sequence = 0
         self.sale_id = (
@@ -61,8 +69,8 @@ class BC3ImportWizard(models.TransientModel):
             .create({"partner_id": self.partner_id.id, "bc3": True})
             .id
         )
-        # decode the base64 encoded data
-        data = base64.decodebytes(self.bc3_file)
+        # CORRECCIÓN: Se usa b64decode en lugar del alias obsoleto decodebytes.
+        data = base64.b64decode(self.bc3_file)
         # create a temporary file, and save the bc3
         fobj = tempfile.NamedTemporaryFile(delete=False)
         fname = fobj.name
@@ -87,7 +95,7 @@ class BC3ImportWizard(models.TransientModel):
             os.unlink(fname)
             seq = 0
             line_ids = []
-            sorted_chapters = dict(sorted(lines.items()))
+            sorted_chapters = dict(sorted(self.lines.items()))
             for key in sorted_chapters:
                 s = (
                     self.env["sale.order.line"]
@@ -172,7 +180,7 @@ class BC3ImportWizard(models.TransientModel):
                     s.sudo().unlink()
                 elif s.id not in line_ids and not s.display_type == "line_note":
                     s.sudo().unlink()
-                elif s.bc3_code not in lines and s.display_type == "line_section":
+                elif s.bc3_code not in self.lines and s.display_type == "line_section":
                     s.sudo().unlink()
                 elif s.display_type == "line_section":
                     next_sequence = (
@@ -189,18 +197,18 @@ class BC3ImportWizard(models.TransientModel):
                     )
                     if next_sequence and next_sequence.sequence == s.sequence + 1:
                         s.sudo().unlink()
-            for c in erase_lines:
+            for c in self.erase_lines:
                 line = (
                     self.env["sale.order.line"]
                     .sudo()
                     .search([("bc3_code", "=", c), ("order_id", "=", self.sale_id.id)])
                 )
-                if line and not (c in lines):
+                if line and not (c in self.lines):
                     line.sudo().unlink()
         return {
             "name": _("Show Sale Order"),
             "type": "ir.actions.act_window",
-            "view_type": "form",
+            # CORRECCIÓN: Se elimina 'view_type' por estar obsoleto.
             "view_mode": "form",
             "res_model": "sale.order",
             "views": [(self.env.ref("sale.view_order_form").id, "form")],
@@ -303,9 +311,9 @@ class BC3ImportWizard(models.TransientModel):
             and not sale_order_line.display_type
         ):
             if not self.line_in_any_dict(sale_order_line.id):
-                erase_lines.append(temp_line["bc3_code"])
+                self.erase_lines.append(temp_line["bc3_code"])
             return
-        if existent_line and not existent_line.id == sale_order_line.id and lines:
+        if existent_line and not existent_line.id == sale_order_line.id and self.lines:
             if not self.line_in_dict(
                 existent_line.bc3_code, sale_order_line.id
             ) and not (sale_order_line.id in self.sale_id.order_line.ids):
@@ -357,10 +365,10 @@ class BC3ImportWizard(models.TransientModel):
             and existent_line.display_type
             and existent_line.display_type == "line_section"
         ):
-            if existent_line.bc3_code in lines:
-                lines[existent_line.bc3_code].append(sale_order_line.id)
+            if existent_line.bc3_code in self.lines:
+                self.lines[existent_line.bc3_code].append(sale_order_line.id)
             else:
-                lines[existent_line.bc3_code] = [sale_order_line.id]
+                self.lines[existent_line.bc3_code] = [sale_order_line.id]
 
     def _parse_repeats_line_product(self, temp_line, seq, existent_line):
         product = self.env.ref("bc3_importer.product_product_product_units")
@@ -390,10 +398,10 @@ class BC3ImportWizard(models.TransientModel):
             and existent_line.display_type
             and existent_line.display_type == "line_section"
         ):
-            if existent_line.bc3_code in lines:
-                lines[existent_line.bc3_code].append(sale_order_line.id)
+            if existent_line.bc3_code in self.lines:
+                self.lines[existent_line.bc3_code].append(sale_order_line.id)
             else:
-                lines[existent_line.bc3_code] = [sale_order_line.id]
+                self.lines[existent_line.bc3_code] = [sale_order_line.id]
 
     def _parse_repeats(
         self, rules, i, dependent_rules, parsed_line, line, parent_seq, existent_line
@@ -435,7 +443,7 @@ class BC3ImportWizard(models.TransientModel):
                         if existent_line:
                             chapter = existent_line.bc3_code
                             for s in sale_order_line:
-                                if chapter in lines and s.id in lines[chapter]:
+                                if chapter in self.lines and s.id in self.lines[chapter]:
                                     sale_order_line = s
                                 else:
                                     sale_order_line = False
@@ -459,8 +467,8 @@ class BC3ImportWizard(models.TransientModel):
             )
         if s:
             for sale_order_line in s:
-                if sale_order_line.bc3_code in erase_lines:
-                    erase_lines.remove(sale_order_line.bc3_code)
+                if sale_order_line.bc3_code in self.erase_lines:
+                    self.erase_lines.remove(sale_order_line.bc3_code)
                 if (
                     "product_uom_qty" in line
                     and sale_order_line.product_uom_qty
@@ -642,11 +650,11 @@ class BC3ImportWizard(models.TransientModel):
                 uom_id = int(self._search_create_uom(parsed_line[i][0]))
                 line[rule.field_id.name] = uom_id
                 if product and product.uom_id and not product.uom_id.id == uom_id:
-                    if created_product:
+                    if self.created_product:
                         product.uom_id = uom_id
                     else:
-                        if uom_id in BC3_PRODUCTS:
-                            product = BC3_PRODUCTS[uom_id]
+                        if uom_id in self.BC3_PRODUCTS:
+                            product = self.BC3_PRODUCTS[uom_id]
                         else:
                             product = self.env.ref(
                                 "bc3_importer.product_product_product_units"
@@ -679,10 +687,10 @@ class BC3ImportWizard(models.TransientModel):
                         sale_order_line.display_type
                         and sale_order_line.display_type == "line_note"
                     ):
-                        if "0" in lines:
-                            lines["0"].append(sale_order_line.id)
+                        if "0" in self.lines:
+                            self.lines["0"].append(sale_order_line.id)
                         else:
-                            lines["0"] = [sale_order_line.id]
+                            self.lines["0"] = [sale_order_line.id]
                 else:
                     line["display_type"] = False
                     t.write(line)
@@ -690,10 +698,10 @@ class BC3ImportWizard(models.TransientModel):
             else:
                 t.write(line)
                 if t.display_type and line_t.display_type == "line_note":
-                    if "0" in lines:
-                        lines["0"].append(line_t.id)
+                    if "0" in self.lines:
+                        self.lines["0"].append(line_t.id)
                     else:
-                        lines["0"] = [line_t.id]
+                        self.lines["0"] = [line_t.id]
 
     @api.model
     def _parse_register_sale_order_line(
@@ -751,10 +759,10 @@ class BC3ImportWizard(models.TransientModel):
                     sale_order_line.display_type
                     and sale_order_line.display_type == "line_note"
                 ):
-                    if "0" in lines:
-                        lines["0"].append(sale_order_line.id)
+                    if "0" in self.lines:
+                        self.lines["0"].append(sale_order_line.id)
                     else:
-                        lines["0"] = [sale_order_line.id]
+                        self.lines["0"] = [sale_order_line.id]
             else:
                 self._parse_line_t(line_t, line)
         return True
@@ -864,7 +872,7 @@ class BC3ImportWizard(models.TransientModel):
         register_line = (
             line[1:]
             .rstrip()
-            .replace("�", "")
+            .replace("", "")
             .replace("(", ",")
             .replace(")", ",")
             .replace("[", ",")
@@ -1008,28 +1016,28 @@ class BC3ImportWizard(models.TransientModel):
 
     @api.model
     def get_uom_products(self):
-        BC3_PRODUCTS[
+        self.BC3_PRODUCTS[
             self.env.ref("bc3_importer.product_product_product_units").uom_id.id
         ] = self.env.ref("bc3_importer.product_product_product_units")
-        BC3_PRODUCTS[
+        self.BC3_PRODUCTS[
             self.env.ref("bc3_importer.product_product_product_meter").uom_id.id
         ] = self.env.ref("bc3_importer.product_product_product_meter")
-        BC3_PRODUCTS[
+        self.BC3_PRODUCTS[
             self.env.ref("bc3_importer.product_product_product_square_meter").uom_id.id
         ] = self.env.ref("bc3_importer.product_product_product_square_meter")
-        BC3_PRODUCTS[
+        self.BC3_PRODUCTS[
             self.env.ref("bc3_importer.product_product_product_cubic_meter").uom_id.id
         ] = self.env.ref("bc3_importer.product_product_product_cubic_meter")
-        BC3_PRODUCTS[
+        self.BC3_PRODUCTS[
             self.env.ref("bc3_importer.product_product_product_g").uom_id.id
         ] = self.env.ref("bc3_importer.product_product_product_g")
-        BC3_PRODUCTS[
+        self.BC3_PRODUCTS[
             self.env.ref("bc3_importer.product_product_product_l").uom_id.id
         ] = self.env.ref("bc3_importer.product_product_product_l")
 
     @api.model
     def line_in_dict(self, code, line_id):
-        if code in lines and line_id in lines[code]:
+        if code in self.lines and line_id in self.lines[code]:
             return True
         return False
 
@@ -1039,10 +1047,10 @@ class BC3ImportWizard(models.TransientModel):
             [("order_id", "=", self.sale_id.id), ("id", "=", int(line_id))]
         )
         if a:
-            if a in lines:
+            if a in self.lines:
                 return True
             else:
-                for d in lines:
-                    if line_id in lines[d]:
+                for d in self.lines:
+                    if line_id in self.lines[d]:
                         return True
         return False

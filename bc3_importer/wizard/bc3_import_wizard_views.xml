@@ -4,26 +4,14 @@
         <field name="name">bc3.import.wizard.wizard.form</field>
         <field name="model">bc3.import.wizard</field>
         <field name="arch" type="xml">
-            <form>
+            <form string="Import BC3 File">
                 <group>
-                    <group>
-                        <field
-                            name="bc3_file"
-                            widget="binary"
-                            filename="bc3_file_name"
-                        />
-                        <field name="partner_id" required="1" />
-                        <!--<field name="project_id"/>-->
-                    </group>
-                    <group>
-                        <field name="version_id" />
-                        <!--<field name="create_products"/>
-                        <field name="product_id"/>-->
-                    </group>
+                    <field name="bc3_file" filename="bc3_filename"/>
+                    <field name="bc3_filename" invisible="1"/>
                 </group>
                 <footer>
                     <button
-                        name="action_import_file"
+                        name="action_import"
                         string="Import File"
                         type="object"
                         class="btn-primary"
@@ -39,26 +27,11 @@
             </form>
         </field>
     </record>
-    <record id="bc3_import_wizard_action" model="ir.actions.act_window">
+
+    <record id="action_import_bc3_file" model="ir.actions.act_window">
         <field name="name">Import BC3 File</field>
         <field name="res_model">bc3.import.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-
-    <menuitem
-        id="bc3_files"
-        name="BC3"
-        parent="sale.sale_menu_root"
-        groups="bc3_importer.group_bc3_user"
-        sequence="10"
-    />
-
-    <menuitem
-        id="bc3_files_import"
-        name="Import BC3"
-        parent="bc3_importer.bc3_files"
-        action="bc3_importer.bc3_import_wizard_action"
-        sequence="1"
-    />
 </odoo>
