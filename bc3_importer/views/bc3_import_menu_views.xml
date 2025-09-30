@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem
+        id="menu_import_bc3_file"
+        name="Importar Archivo BC3"
+        parent="sale.sale_menu_root"
+        action="bc3_importer.action_import_bc3_file"
+        sequence="20"
+    />
+</odoo>

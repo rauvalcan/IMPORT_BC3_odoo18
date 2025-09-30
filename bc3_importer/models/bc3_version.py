@@ -14,19 +14,41 @@ _logger = logging.getLogger(__name__)
 class Bc3Version(models.Model):
     _name = "bc3.version"
     _description = "BC3 Version"
-    _order = "name"
+
     name = fields.Char(required=True)
-    register_ids = fields.One2many(
-        "bc3.version.register", "version_id", string="Registers"
+    concepts_count = fields.Integer(
+        string="Concepts Count",
+        compute="_compute_concepts_count",
     )
 
-    @api.constrains("register_ids")
-    def _check_registers(self):
-        for record in self:
-            if record.register_ids:
-                register_name = record.register_ids.mapped("name")
-                if len(list(duplicates(register_name))) > 0:
-                    raise ValidationError(_("Register name should unique"))
+    def _compute_concepts_count(self):
+        """
+        Calcula el número de líneas de venta asociadas a esta versión de BC3.
+        """
+        for version in self:
+            sale_orders = self.env["sale.order"].search([
+                ("name", "=", version.name)
+            ])
+            version.concepts_count = len(sale_orders.order_line)
+
+    def action_view_concepts(self):
+        """
+        Este es el método que ejecuta el botón.
+        Abre la lista de líneas de venta relacionadas.
+        """
+        self.ensure_one()
+        sale_orders = self.env["sale.order"].search([
+            ("name", "=", self.name)
+        ])
+        
+        return {
+            "name": _("Concepts"),
+            "type": "ir.actions.act_window",
+            "res_model": "sale.order.line",
+            "view_mode": "tree,form",
+            "domain": [("order_id", "in", sale_orders.ids)],
+            "target": "current",
+        }
 
 
 class Bc3VersionRegister(models.Model):
@@ -96,8 +118,6 @@ class Bc3VersionRegisterRule(models.Model):
     field_id = fields.Many2one(
         "ir.model.fields",
         "Field",
-        # --- CAMBIO REALIZADO AQUÍ ---
-        # El dominio se ha convertido en una cadena de texto para mayor compatibilidad.
         domain="""[
             ('model_id', '=', model_id),
             (
@@ -122,7 +142,8 @@ class Bc3VersionRegisterRule(models.Model):
     primary_key = fields.Boolean("Primary key")
     field_ids = fields.Many2many(
         "ir.model.fields",
-        string="Field",
+        # --- CORRECCIÓN: Se cambia la etiqueta para que sea única ---
+        string="Fields",
         domain="""[
             (
                 'ttype',
